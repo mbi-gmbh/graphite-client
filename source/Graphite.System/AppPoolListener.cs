@@ -40,12 +40,12 @@ namespace Graphite.System
                     this.counterListener = null;
                 }
 
-				this.counterName = newName;
-				
+                this.counterName = newName;
+                
                 return true;
             }
 
-	        return false;
+            return false;
         }
 
         public float? ReportValue()
@@ -70,8 +70,6 @@ namespace Graphite.System
 
             try
             {
-
-
                 return this.counterListener.ReportValue(); ;
             }
             catch (InvalidOperationException)
@@ -143,11 +141,19 @@ namespace Graphite.System
                 CreateNoWindow = true,
             };
 
+            var lockObject = new object();
             var standardOut = new StringBuilder();
 
             Process p = Process.Start(startInfo);
 
-            p.OutputDataReceived += (s, d) => standardOut.AppendLine(d.Data);
+            p.OutputDataReceived += (s, d) =>
+                {
+                    lock (lockObject)
+                    {
+                        standardOut.AppendLine(d.Data);
+                    }
+                };
+                
             p.BeginOutputReadLine();
 
             bool success = p.WaitForExit(maxMilliseconds);
@@ -169,7 +175,10 @@ namespace Graphite.System
                 }
             }
 
-            result = standardOut.ToString();
+            lock (lockObject)
+            {
+                result = standardOut.ToString();
+            }
 
             return success;
         }
